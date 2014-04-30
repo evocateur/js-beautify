@@ -142,6 +142,7 @@
     function Beautifier(js_source_text, options) {
         "use strict";
         var input, output_lines;
+        var tokens = [], token_pos, comments_pos;
         var token_text, token_type, last_type, last_last_text, indent_string;
         var flags, previous_flags, flag_store;
         var whitespace, wordchar, punct, parser_pos, line_starters, reserved_words, digits;
@@ -317,6 +318,7 @@
             /*jshint onevar:true */
             var t, i, keep_whitespace, sweet_code;
 
+            tokenize();
             while (true) {
                 t = get_next_token();
                 token_text = t[0];
@@ -734,19 +736,88 @@
         }
 
         function is_next(find) {
-            var local_pos = parser_pos;
-            var c = input.charAt(local_pos);
-            while (in_array(c, whitespace) && c !== find) {
-                local_pos++;
-                if (local_pos >= input_length) {
-                    return false;
-                }
-                c = input.charAt(local_pos);
-            }
-            return c === find;
+            return get_next_token(true)[0] === find;
         }
 
-        function get_next_token() {
+        function get_next_token(peek_only) {
+            input_wanted_newline = false;
+            var parent_token = tokens[token_pos];
+            var next_token = parent_token;
+            
+            if (comments_pos < parent_token.coments_before.length ) {
+                next_token = next_token.coments_before[comments_pos];
+            } 
+            
+            var next = [next_token.text, next_token.type];
+            
+            if(!peek_only) {
+                n_newlines = next_token.newlines;
+                whitespace_before_token = next_token.whitespace_before;
+ 
+                if (comments_pos >= parent_token.coments_before.length) {
+                    comments_pos = 0;
+                    token_pos += 1;
+                } else {
+                    comments_pos += 1;
+                }
+            }
+
+            return next;
+        }
+        
+        function tokenize() { 
+            var Token = function(type, text, newlines, whitespace_before, mode, parent) {
+                this.type = type;
+                this.text = text;
+                this.coments_before = [];
+                this.newlines = newlines || 0;
+                this.whitespace_before = whitespace_before || [];
+                this.parent = null;
+            }
+            
+            var next, last;
+            var token_values;
+            var last_word = null;
+            var open = null;
+            var open_stack = [];
+            var comments = [];
+            do {
+                token_values = tokenize_next();
+                next = new Token(token_values[1], token_values[0], n_newlines, whitespace_before_token);
+                while(next.type === 'TK_INLINE_COMMENT' || next.type === 'TK_COMMENT' ||
+                    next.type === 'TK_BLOCK_COMMENT' || next.type === 'TK_UNKNOWN') {
+                    comments.push(next);
+                    token_values = tokenize_next();
+                    next = new Token(token_values[1], token_values[0], n_newlines, whitespace_before_token);
+                } 
+
+                if (comments.length) {
+                    next.coments_before = comments;
+                    comments = [];
+                }
+                
+                if (next.type === 'TK_START_BLOCK' || next.type === 'TK_START_EXPR') {
+                    next.parent = last;
+                    open = next;
+                    open_stack.push(next);
+                }  else if ((next.type === 'TK_END_BLOCK' || next.type === 'TK_END_EXPR') &&
+                    (open && (
+                        (next.text === ']' && open.text === '[') || 
+                        (next.text === ')' && open.text === '(') || 
+                        (next.text === '}' && open.text === '}')))) {
+                    next.parent = open.parent;
+                    open = open_stack.pop();
+                }                               
+                
+                tokens.push(next);
+                last = next;
+            }  while (last.type !== 'TK_EOF')
+                                    
+            token_pos = 0;
+            comments_pos = 0;
+        }
+        
+        function tokenize_next() {
             var i, resulting_string;
 
             n_newlines = 0;
@@ -755,8 +826,19 @@
                 return ['', 'TK_EOF'];
             }
 
-            input_wanted_newline = false;
             whitespace_before_token = [];
+
+            var last_token, last_type, last_text;
+            if (tokens.length) {
+                last_token = tokens[tokens.length-1];
+                last_type = last_token.type;
+                last_text = last_token.text;
+            } else {
+                last_token = null;
+                last_type = 'TK_START_BLOCK';
+                last_text = '';
+            }
+            
 
             var c = input.charAt(parser_pos);
             parser_pos += 1;
@@ -801,13 +883,13 @@
                     var sign = input.charAt(parser_pos);
                     parser_pos += 1;
 
-                    var t = get_next_token();
+                    var t = tokenize_next();
                     c += sign + t[0];
                     return [c, 'TK_WORD'];
                 }
 
                 if (!(last_type === 'TK_DOT' ||
-                        (last_type === 'TK_RESERVED' && in_array(flags.last_text, ['set', 'get'])))
+                        (last_type === 'TK_RESERVED' && in_array(last_text, ['set', 'get'])))
                     && in_array(c, reserved_words)) {
                     if (c === 'in') { // hack for 'in' operator
                         return [c, 'TK_OPERATOR'];
@@ -878,14 +960,15 @@
 
             }
 
-
             if (c === '`' || c === "'" || c === '"' || // string
                 (
                     (c === '/') || // regexp
                     (opt.e4x && c === "<" && input.slice(parser_pos - 1).match(/^<([-a-zA-Z:0-9_.]+|{[^{}]*}|!\[CDATA\[[\s\S]*?\]\])\s*([-a-zA-Z:0-9_.]+=('[^']*'|"[^"]*"|{[^{}]*})\s*)*\/?\s*>/)) // xml
                 ) && ( // regex and xml can only appear in specific locations during parsing
-                    (last_type === 'TK_RESERVED' && is_special_word(flags.last_text)) ||
-                    (last_type === 'TK_END_EXPR' && in_array(previous_flags.mode, [MODE.Conditional, MODE.ForInitializer])) ||
+                    (last_type === 'TK_RESERVED' && is_special_word(last_text)) ||
+                    // This is the only place in tokenizing that we need to know flags... 
+                    (last_type === 'TK_END_EXPR' && last_text === ')' && 
+                        last_token.parent.type === 'TK_RESERVED' && in_array(last_token.parent.text, ['if', 'while', 'for'])) ||
                     (in_array(last_type, ['TK_COMMENT', 'TK_START_EXPR', 'TK_START_BLOCK',
                         'TK_END_BLOCK', 'TK_OPERATOR', 'TK_EQUALS', 'TK_EOF', 'TK_SEMICOLON', 'TK_COMMA'
                     ]))
