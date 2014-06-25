@@ -1687,7 +1687,7 @@
             var j; // iterator for this case
             var javadoc = false;
             var starless = false;
-            var lastIndent = whitespace_before_token.join('');
+            var lastIndent = current_token.whitespace_before.join('');
             var lastIndentLength = lastIndent.length;
 
             // block comment starts with a new line
