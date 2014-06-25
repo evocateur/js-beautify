@@ -113,22 +113,22 @@
       // Test whether a given character code starts an identifier.
 
       var isIdentifierStart = exports.isIdentifierStart = function(code) {
-        if (code < 65) return code === 36;
-        if (code < 91) return true;
-        if (code < 97) return code === 95;
-        if (code < 123)return true;
+        if (code < 65)  { return code === 36; }
+        if (code < 91)  { return true; }
+        if (code < 97)  { return code === 95; }
+        if (code < 123) { return true; }
         return code >= 0xaa && nonASCIIidentifierStart.test(String.fromCharCode(code));
       };
 
       // Test whether a given character is part of an identifier.
 
       var isIdentifierChar = exports.isIdentifierChar = function(code) {
-        if (code < 48) return code === 36;
-        if (code < 58) return true;
-        if (code < 65) return false;
-        if (code < 91) return true;
-        if (code < 97) return code === 95;
-        if (code < 123)return true;
+        if (code < 48) { return code === 36; }
+        if (code < 58) { return true; }
+        if (code < 65) { return false; }
+        if (code < 91) { return true; }
+        if (code < 97) { return code === 95; }
+        if (code < 123){ return true; }
         return code >= 0xaa && nonASCIIidentifier.test(String.fromCharCode(code));
       };
     })(acorn);
@@ -272,7 +272,7 @@
         opt.wrap_line_length = (options.wrap_line_length === undefined) ? 0 : parseInt(options.wrap_line_length, 10);
         opt.e4x = (options.e4x === undefined) ? false : options.e4x;
 
-        if(options.indent_with_tabs){
+        if (options.indent_with_tabs) {
             opt.indent_char = '\t';
             opt.indent_size = 1;
         }
@@ -313,13 +313,13 @@
         parser_pos = 0;
 
         this.beautify = function() {
-            /*jshint onevar:true */
+            /*jshint onevar:true, boss:true */
             var local_token, sweet_code;
 
             tokenize();
             while (local_token = get_token()) {
                 token_pos += 1;
-                for(var i = 0; i < local_token.comments_before.length; i++) {
+                for (var i = 0; i < local_token.comments_before.length; i++) {
                     // The cleanest handling of inline comments is to treat them as though they aren't there.
                     // Just continue formatting and the behavior should be logical.
                     // Also ignore unknown tokens.  Again, this should result in better behavior.
@@ -526,8 +526,9 @@
 
         function deindent() {
             if (flags.indentation_level > 0 &&
-                ((!flags.parent) || flags.indentation_level > flags.parent.indentation_level))
+                ((!flags.parent) || flags.indentation_level > flags.parent.indentation_level)) {
                 flags.indentation_level -= 1;
+            }
         }
 
         function remove_redundant_indentation(frame) {
@@ -537,7 +538,7 @@
             //           after wrap points are calculated
             // These issues are minor compared to ugly indentation.
 
-            if (frame.multiline_frame) return;
+            if (frame.multiline_frame) { return; }
 
             // remove one indent from each line inside this section
             var index = frame.start_line_index;
@@ -750,11 +751,11 @@
                 this.wanted_newline = newlines > 0;
                 this.whitespace_before = whitespace_before || [];
                 this.parent = null;
-            }
+            };
 
             var next, last;
             var n_newlines, whitespace_before_token;
-            var in_html_comment = false
+            var in_html_comment = false;
             var token_values;
             var last_word = null;
             var open = null;
@@ -763,7 +764,7 @@
             do {
                 token_values = tokenize_next();
                 next = new Token(token_values[1], token_values[0], n_newlines, whitespace_before_token);
-                while(next.type === 'TK_INLINE_COMMENT' || next.type === 'TK_COMMENT' ||
+                while (next.type === 'TK_INLINE_COMMENT' || next.type === 'TK_COMMENT' ||
                     next.type === 'TK_BLOCK_COMMENT' || next.type === 'TK_UNKNOWN') {
                     comments.push(next);
                     token_values = tokenize_next();
@@ -779,18 +780,19 @@
                     next.parent = last;
                     open = next;
                     open_stack.push(next);
-                }  else if ((next.type === 'TK_END_BLOCK' || next.type === 'TK_END_EXPR') &&
+                } else if ((next.type === 'TK_END_BLOCK' || next.type === 'TK_END_EXPR') &&
                     (open && (
                         (next.text === ']' && open.text === '[') ||
                         (next.text === ')' && open.text === '(') ||
-                        (next.text === '}' && open.text === '}')))) {
+                        (next.text === '}' && open.text === '}')))
+                    ) {
                     next.parent = open.parent;
                     open = open_stack.pop();
                 }
 
                 tokens.push(next);
                 last = next;
-            }  while (last.type !== 'TK_EOF')
+            } while (last.type !== 'TK_EOF');
 
             token_pos = 0;
             comments_pos = 0;
@@ -821,7 +823,6 @@
                 parser_pos += 1;
 
                 while (in_array(c, whitespace)) {
-
                     if (c === '\n') {
                         n_newlines += 1;
                         whitespace_before_token = [];
@@ -1585,7 +1586,6 @@
                 // EXPR or DO_BLOCK
                 output_space_before_token = true;
             }
-
         }
 
         function handle_operator() {
