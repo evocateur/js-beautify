@@ -115,9 +115,9 @@
             padding-top: 8px;
         }
     </style>
+
     <script src="web/third-party/jquery/jquery.js"></script>
     <script src="web/third-party/jquery/jquery.cookie.js"></script>
-
 
     <script src="js/lib/beautify.js"></script>
     <script src="js/lib/beautify-css.js"></script>
@@ -143,7 +143,13 @@
             P_A_C_K_E_R.run_tests(st);
             Urlencoded.run_tests(st);
             MyObfuscate.run_tests(st);
-            var results = st.results_raw().replace(/ /g, '&nbsp;').replace(/\r/g, '·').replace(/\n/g, '<br>');
+            var results = st.results_raw()
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/ /g, '&nbsp;')
+                .replace(/\r/g, '·')
+                .replace(/\n/g, '<br>');
             $('#testresults').html(results).show();
         }
 
@@ -277,7 +283,7 @@
             <a class="self" href="./">Beautify, unpack or deobfuscate JavaScript and HTML, make JSON/JSONP readable, etc.</a>
         </p>
         <p>
-            All of the source code is completely free and open, available on the <a href="https://github.com/einars/js-beautify">github</a> under MIT licence,
+            All of the source code is completely free and open, available on the <a href="https://github.com/beautify-web/js-beautify">github</a> under MIT licence,
             <br>and we have a command-line version, python library and a <a href="https://npmjs.org/package/js-beautify">node package</a> as well.
         </p>
     </div>

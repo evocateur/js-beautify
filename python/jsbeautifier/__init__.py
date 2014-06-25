@@ -608,8 +608,8 @@ class Beautifier:
                 or (self.last_type == 'TK_RESERVED' and self.flags.last_text == 'else' and not (self.token_type == 'TK_RESERVED' and self.token_text == 'if' )) \
                 or (self.last_type == 'TK_END_EXPR' and (self.previous_flags.mode == MODE.ForInitializer or self.previous_flags.mode == MODE.Conditional)) \
                 or (self.last_type == 'TK_WORD' and self.flags.mode == MODE.BlockStatement \
-                    and not self.flags.in_case 
-                    and not (self.token_text == '--' or self.token_text == '++') 
+                    and not self.flags.in_case
+                    and not (self.token_text == '--' or self.token_text == '++')
                     and self.token_type != 'TK_WORD' and self.token_type != 'TK_RESERVED') \
                 or (self.flags.mode == MODE.ObjectLiteral and self.flags.last_text == ':' and self.flags.ternary_depth == 0) \
                 ):
@@ -1280,7 +1280,7 @@ class Beautifier:
         if self.start_of_statement():
             # The conditional starts the statement if appropriate.
             pass
-    
+
         if self.flags.declaration_statement:
             # just got an '=' in a var-line, different line breaking rules will apply
             self.flags.declaration_assignment = True
@@ -1312,7 +1312,7 @@ class Beautifier:
             or (self.flags.mode == MODE.Statement and self.flags.parent.mode ==  MODE.ObjectLiteral):
             if self.flags.mode == MODE.Statement:
                 self.restore_mode()
-            
+
             self.append_newline()
         else:
             # EXPR or DO_BLOCK
@@ -1325,7 +1325,7 @@ class Beautifier:
                     self.last_last_text == '{' and \
                     (self.last_type == 'TK_WORD' or self.last_type == 'TK_RESERVED'):
                 self.flags.mode = MODE.ObjectLiteral
-        
+
         if self.start_of_statement():
             # The conditional starts the statement if appropriate.
             pass
@@ -1414,12 +1414,17 @@ class Beautifier:
     def handle_block_comment(self, token_text):
         lines = token_text.replace('\x0d', '').split('\x0a')
         javadoc = False
+        starless = False
+        last_indent = ''.join(self.whitespace_before_token)
+        last_indent_length = len(last_indent)
 
         # block comment starts with a new line
         self.append_newline(preserve_statement_flags = True)
         if  len(lines) > 1:
             if not any(l for l in lines[1:] if ( l.strip() == '' or (l.lstrip())[0] != '*')):
                 javadoc = True
+            elif all(l.startswith(last_indent) or l.strip() == '' for l in lines[1:]):
+                starless = True
 
         # first line always indented
         self.append_token(lines[0])
@@ -1428,6 +1433,9 @@ class Beautifier:
             if javadoc:
                 # javadoc: reformat and re-indent
                 self.append_token(' ' + line.strip())
+            elif starless and len(line) > last_indent_length:
+                # starless: re-indent non-empty content, avoiding trim
+                self.append_token(line[last_indent_length:])
             else:
                 # normal comments output raw
                 self.output_lines[-1].text.append(line)

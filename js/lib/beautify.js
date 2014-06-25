@@ -49,9 +49,9 @@
 
     jslint_happy (default false) - if true, then jslint-stricter mode is enforced.
 
-            jslint_happy   !jslint_happy
+            jslint_happy       !jslint_happy
             ---------------------------------
-             function ()      function()
+            function ()        function()
 
     brace_style (default "collapse") - "collapse" | "expand" | "end-expand"
             put braces on the same line as control statements (default), or put braces on own line (Allman / ANSI style), or just put end braces on own line.
@@ -609,12 +609,11 @@
                     (last_type === 'TK_RESERVED' && flags.last_text === 'return' && !current_token.wanted_newline) ||
                     (last_type === 'TK_RESERVED' && flags.last_text === 'else' && !(current_token.type === 'TK_RESERVED' && current_token.text === 'if')) ||
                     (last_type === 'TK_END_EXPR' && (previous_flags.mode === MODE.ForInitializer || previous_flags.mode === MODE.Conditional)) ||
-                    (last_type === 'TK_WORD' && flags.mode === MODE.BlockStatement 
-                        && !flags.in_case 
-                        && !(current_token.text === '--' || current_token.text === '++') 
+                    (last_type === 'TK_WORD' && flags.mode === MODE.BlockStatement
+                        && !flags.in_case
+                        && !(current_token.text === '--' || current_token.text === '++')
                         && current_token.type !== 'TK_WORD' && current_token.type !== 'TK_RESERVED') ||
-                    (flags.mode === MODE.ObjectLiteral && flags.last_text === ':' && flags.ternary_depth === 0) 
-                        
+                    (flags.mode === MODE.ObjectLiteral && flags.last_text === ':' && flags.ternary_depth === 0)
                 ) {
 
                 set_mode(MODE.Statement);
@@ -641,6 +640,20 @@
             for (var i = 0; i < lines.length; i++) {
                 var line = trim(lines[i]);
                 if (line.charAt(0) !== c) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        function each_line_matches_indent(lines, indent) {
+            var i = 0,
+                len = lines.length,
+                line;
+            for (; i < len; i++) {
+                line = lines[i];
+                // allow empty lines to pass through
+                if (line && line.indexOf(indent) !== 0) {
                     return false;
                 }
             }
@@ -1430,7 +1443,7 @@
                 prefix = 'SPACE';
             } else if (last_type === 'TK_STRING') {
                 prefix = 'NEWLINE';
-            } else if (last_type === 'TK_RESERVED' || last_type === 'TK_WORD' || 
+            } else if (last_type === 'TK_RESERVED' || last_type === 'TK_WORD' ||
                 (flags.last_text === '*' && last_last_text === 'function')) {
                 prefix = 'SPACE';
             } else if (last_type === 'TK_START_BLOCK') {
@@ -1534,7 +1547,7 @@
             if (start_of_statement()) {
                 // The conditional starts the statement if appropriate.
             }
-            
+
             if (flags.declaration_statement) {
                 // just got an '=' in a var-line, different formatting/line-breaking, etc will now be done
                 flags.declaration_assignment = true;
@@ -1563,7 +1576,7 @@
             }
 
             print_token();
-            if (flags.mode === MODE.ObjectLiteral || 
+            if (flags.mode === MODE.ObjectLiteral ||
                 (flags.mode === MODE.Statement && flags.parent.mode === MODE.ObjectLiteral)) {
                 if (flags.mode === MODE.Statement) {
                     restore_mode();
@@ -1573,7 +1586,7 @@
                 // EXPR or DO_BLOCK
                 output_space_before_token = true;
             }
-        
+
         }
 
         function handle_operator() {
@@ -1583,11 +1596,11 @@
                     (last_type === 'TK_WORD' || last_type === 'TK_RESERVED')){
                 flags.mode = MODE.ObjectLiteral;
             }
-            
+
             if (start_of_statement()) {
                 // The conditional starts the statement if appropriate.
             }
-            
+
             var space_before = true;
             var space_after = true;
             if (last_type === 'TK_RESERVED' && is_special_word(flags.last_text)) {
@@ -1674,12 +1687,18 @@
             var lines = split_newlines(current_token.text);
             var j; // iterator for this case
             var javadoc = false;
+            var starless = false;
+            var lastIndent = whitespace_before_token.join('');
+            var lastIndentLength = lastIndent.length;
 
             // block comment starts with a new line
             print_newline(false, true);
             if (lines.length > 1) {
                 if (all_lines_start_with(lines.slice(1), '*')) {
                     javadoc = true;
+                }
+                else if (each_line_matches_indent(lines.slice(1), lastIndent)) {
+                    starless = true;
                 }
             }
 
@@ -1690,6 +1709,9 @@
                 if (javadoc) {
                     // javadoc: reformat and re-indent
                     print_token(' ' + trim(lines[j]));
+                } else if (starless && lines[j].length > lastIndentLength) {
+                    // starless: re-indent non-empty content, avoiding trim
+                    print_token(lines[j].substring(lastIndentLength));
                 } else {
                     // normal comments output raw
                     output_lines[output_lines.length - 1].text.push(lines[j]);
@@ -1722,7 +1744,7 @@
             if (start_of_statement()) {
                 // The conditional starts the statement if appropriate.
             }
-            
+
             if (last_type === 'TK_RESERVED' && is_special_word(flags.last_text)) {
                 output_space_before_token = true;
             } else {
